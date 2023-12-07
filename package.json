@@ -1,0 +1,12 @@
+{
+    "dependencies": {
+        "async": "^3.2.5",
+        "axios": "^1.6.2",
+        "jquery": "^3.7.1",
+        "request": "^2.88.2",
+        "request-progress": "^3.0.0",
+        "request-throttle": "^0.0.2",
+        "stream-throttle": "^0.1.3",
+        "ws": "^8.14.2"
+    }
+}

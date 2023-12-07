@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title> Практическая работа HTTP клиент + WebSocket сервер</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+  <h1> Практическая Работа<br>HTTP клиент + WebSocket сервер</h1>
+  
+  <label for="keyword">Введите ключевое слово: iphone, samsung, xiaomi</label>
+  <input type="text" id="keyword">
+  <button id="submitBtn">Отправить</button>
+  
+  <h2>Список URL:</h2>
+  <ul id="urlList"></ul>
+  
+  <h2>Список загруженного контента:</h2>
+  <ul id="contentList"></ul>
+  
+  <div id="modal">
+    <div id="modal-content"></div>
+  </div>
+  <h2>Загрузка</h2>
+  <progress id="progressBar" value="0" max="100"></progress>
+  <style>
+    body{
+      text-align: center;
+      background-color: antiquewhite;
+    
+    }
+    progress {  
+      width: 40%;
+      border-radius: 5px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    progress::-webkit-progress-bar{
+      background-color: #b58787;
+      border-radius: 5px;
+    }
+
+    progress::-webkit-progress-value{
+      background-color: #304f31;
+    }
+    #modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 80%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s, opacity 0.3s;
+    }
+
+    #modal.active {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    #modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      max-height: 500px;
+      overflow: auto;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background-color: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: #888;
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #555;
+    }
+  </style>
+
+  <script>
+    const ws = new WebSocket('ws://localhost:8080');
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modal-content');
+
+    ws.onerror = function(event) {
+      console.log('Произошла ошибка WebSocket: ', event);
+      alert('Произошла ошибка сети. Пожалуйста, проверьте консоль для получения деталей.');
+    };
+
+    ws.onmessage = function(event) {
+      const server_response = JSON.parse(event.data);
+    
+      if(server_response.type){
+        console.log(server_response);
+        if (server_response.type === 'content') {
+          saveContent(server_response.url, server_response.content);
+          console.log('...');
+        }
+      }
+      else {
+        console.log(server_response);
+        $('#urlList').empty();
+    
+        if(server_response != 'empty') {
+          for(const url of server_response) {
+            const listItem = $('<li>').text(url);
+            const downloadBtn = $('<button>').text('Скачать');
+          
+            downloadBtn.on('click', async () => {
+              console.log(url);
+              if (localStorage.getItem(url) !== null) {
+                alert("Готово");
+              }
+              else {
+                await downloadContent(url);
+              }
+            });
+          listItem.append(downloadBtn);
+          $('#urlList').append(listItem);
+          }
+        }
+        else{
+          alert("Введите слово из списка!");
+        }
+      }
+    };
+    
+
+    localStorage.clear();
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
+    
+
+    $(document).ready(() => {
+      $('#submitBtn').on('click', async () => {
+        const client_request_keyword = {
+          type : 'keyword',
+          keyword : $('#keyword').val(),
+          url : ''
+        }
+        console.log(client_request_keyword);
+        ws.send(JSON.stringify(client_request_keyword));
+      });
+    });
+
+    async function downloadContent(url) {
+      try {
+        console.log('Скачивание');
+        return new Promise(resolve => {
+          const download_request = {
+            type : 'download',
+            keyword : '',
+            url : url
+          };
+         
+          console.log(download_request);                
+          ws.send(JSON.stringify(download_request));    
+        });
+      } catch (error) {
+        console.log("Возникла ошибка при загрузке контента:", error);
+      }
+    }
+
+    function saveContent(url, content) {
+      localStorage.setItem(url, content);
+      console.log(url);
+      console.log(content);
+      
+
+      const listItem = $('<li>').text(url);
+      const viewBtn = $('<button>').text('Открыть в новой вкладке');
+      const viewBtnModal = $('<button>').text('Открыть в окне');
+      viewBtn.on('click', () => {
+        showContent(url, 0);
+      });
+      viewBtnModal.on('click', () => {
+        showContent(url, 1);
+      });
+
+      listItem.append(viewBtn);
+      listItem.append(viewBtnModal);
+      $('#contentList').append(listItem);
+    }
+
+    function showContent(url, new_modal) {
+      const content = localStorage.getItem(url);
+      if (new_modal == 1) {
+        modalContent.innerHTML = content; 
+        modal.classList.add('active');
+      }
+      if (new_modal == 0) {
+        const newTab = window.open();
+        newTab.document.write(content);
+        newTab.document.close();
+      }
+    }
+
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+
+    
+  </script>
+</body>
+</html>

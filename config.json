@@ -1,0 +1,5 @@
+{
+    "maxConnections": 10,
+    "speedLimitPerConnection": 5000
+  }
+  
